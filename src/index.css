@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #E0F2FE;
+  }
+
+  #root {
+    height: 100vh;
+    width: 100%;
+    @apply bg-gradient-to-br from-white via-brand-light to-blue-100;
+  }
+}
+
+@layer utilities {
+  /* hide default browser scrollbars globally but allow overrides via explicit classes */
+  *::-webkit-scrollbar { display: none !important; }
+  * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+}
+
+/* explicit visible custom scrollbar for elements using .custom-scrollbar-white */
+.custom-scrollbar-white::-webkit-scrollbar {
+  display: block !important;
+  width: 6px;
+}
+.custom-scrollbar-white::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+.custom-scrollbar-white::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 10px;
+}
