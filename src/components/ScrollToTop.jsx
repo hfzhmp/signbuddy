@@ -37,7 +37,7 @@ export default function ScrollToTop({ containerId }) {
           whileHover={{ scale: 1.1, y: -5 }}
           whileTap={{ scale: 0.9 }}
           onClick={handleScrollUp}
-          className="fixed bottom-8 right-8 z-[90] p-3.5 bg-gradient-to-r from-brand-main to-cyan-400 text-white rounded-full shadow-lg transition-all group"
+          className="fixed bottom-24 md:bottom-8 right-6 md:right-8 z-[90] p-3 md:p-3.5 bg-gradient-to-r from-brand-main to-cyan-400 text-white rounded-full shadow-lg transition-all group"
           title="Kembali ke atas"
         >
           <ArrowUp className="w-6 h-6 stroke-[3px] group-hover:-translate-y-1 transition-transform duration-300" />

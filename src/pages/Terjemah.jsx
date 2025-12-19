@@ -371,21 +371,45 @@ const Terjemah = () => {
   useEffect(() => {
     let animationId;
     const detect = async (timestamp) => {
-      if (!isMounted.current) return;
+      // 1. Safety Checks (Mount, System Ready, Refs)
+      if (
+        !isMounted.current ||
+        !isSystemReady ||
+        !webcamRef.current ||
+        !webcamRef.current.video ||
+        webcamRef.current.video.readyState !== 4 ||
+        !handsRef.current
+      ) {
+        animationId = requestAnimationFrame(detect);
+        return;
+      }
 
-      const THROTTLE_MS = 50; 
-      // Only detect if System is officially Ready
-      if (isSystemReady && webcamRef.current && webcamRef.current.video && webcamRef.current.video.readyState === 4 && handsRef.current) {
-        if (timestamp - lastProcessedTime.current >= THROTTLE_MS) {
-          lastProcessedTime.current = timestamp;
-          try {
-            await handsRef.current.send({ image: webcamRef.current.video });
-          } catch(err) {
-            console.warn("Detection dropped frame:", err);
-            // Don't crash, just skip frame
-          }
+      // 2. Video Dimension Check (Prevent WebGL Crashes)
+      const video = webcamRef.current.video;
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        // Wait for next frame if video has no dimensions yet
+        animationId = requestAnimationFrame(detect);
+        return;
+      }
+
+      // 3. Set Dimensions Properly
+      webcamRef.current.video.width = video.videoWidth;
+      webcamRef.current.video.height = video.videoHeight;
+
+      // 4. Throttle Processing (e.g. 20 FPS)
+      const THROTTLE_MS = 50;
+      if (timestamp - lastProcessedTime.current >= THROTTLE_MS) {
+        lastProcessedTime.current = timestamp;
+
+        try {
+           // 5. Send to MediaPipe
+           await handsRef.current.send({ image: video });
+        } catch(err) {
+           console.warn("Detection dropped frame:", err);
         }
       }
+      
+      // 6. Loop
       animationId = requestAnimationFrame(detect);
     };
 
@@ -509,11 +533,11 @@ const Terjemah = () => {
   const showEmptyState = finalSentence.length === 0 && !currentWord;
 
   return (
-    <div className="flex flex-col md:flex-row gap-8 h-[85%] items-center justify-center px-4 pt-4">
+    <div className="flex flex-col md:flex-row gap-4 md:gap-8 h-auto md:h-[85%] items-center justify-center px-4 pt-4 pb-24 md:pb-0">
       {/* left: camera */}
       {/* UPDATE STYLE CONTAINER: Support Dark Mode */}
-      <Motion.div layout className={`flex-1 w-full max-w-[600px] aspect-[4/3] rounded-[2.5rem] p-3 shadow-xl border-[4px] relative overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-brand-main'}`}>
-        <div className="w-full h-full bg-gray-900 rounded-[2rem] relative overflow-hidden flex flex-col items-center justify-center group">
+      <Motion.div className={`flex-1 w-full md:max-w-[600px] aspect-[4/3] rounded-[2rem] md:rounded-[2.5rem] p-2 md:p-3 shadow-xl border-[4px] relative overflow-hidden transition-colors duration-300 shrink-0 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-brand-main'}`}>
+        <div className="w-full h-full bg-gray-900 rounded-[1.5rem] md:rounded-[2rem] relative overflow-hidden flex flex-col items-center justify-center group">
           <div className="absolute inset-0 w-full h-full bg-black z-0">
             {/* 
               LOGIC: 
@@ -573,32 +597,33 @@ const Terjemah = () => {
                 )}
               </AnimatePresence>
 
-              <div className="absolute top-6 left-6 backdrop-blur-md px-5 py-2 rounded-full flex items-center gap-3 border border-white/10 z-30 shadow-lg bg-green-500/20 text-green-100">
-                <div className="relative flex h-3 w-3">
+              {/* MOBILE OVERLAY FIXES: Smaller text, tighter spacing */}
+              <div className="absolute top-4 left-4 md:top-6 md:left-6 backdrop-blur-md px-2 py-1 md:px-5 md:py-2 rounded-full flex items-center gap-2 md:gap-3 border border-white/10 z-30 shadow-lg bg-green-500/20 text-green-100">
+                <div className="relative flex h-2 w-2 md:h-3 md:w-3 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 md:h-3 md:w-3 bg-green-500"></span>
                 </div>
-                <span className="text-sm font-medium tracking-wide">AI Live</span>
+                <span className="text-[10px] md:text-sm font-medium tracking-wide whitespace-nowrap">AI Live</span>
               </div>
 
-              <button onClick={handleStopSystem} className="absolute top-6 right-6 z-50 p-3 bg-red-500/80 hover:bg-red-600 text-white rounded-full shadow-lg backdrop-blur-sm border border-white/10 transition-all hover:scale-110 active:scale-95 group" title="Matikan Kamera">
-                <Power className="w-5 h-5 group-hover:drop-shadow-md" strokeWidth={2.5} />
+              <button onClick={handleStopSystem} className="absolute top-4 right-4 md:top-6 md:right-6 z-50 p-2 md:p-3 bg-red-500/80 hover:bg-red-600 text-white rounded-full shadow-lg backdrop-blur-sm border border-white/10 transition-all hover:scale-110 active:scale-95 group" title="Matikan Kamera">
+                <Power className="w-4 h-4 md:w-5 md:h-5 group-hover:drop-shadow-md" strokeWidth={2.5} />
               </button>
 
               <AnimatePresence>
                 {detectedLetter && (
-                  <Motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="absolute bottom-20 left-0 right-0 mx-auto z-40 flex flex-col items-center pointer-events-none">
+                  <Motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="absolute bottom-16 md:bottom-20 left-0 right-0 mx-auto z-40 flex flex-col items-center pointer-events-none">
                     <div className="mb-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 flex items-center gap-2">
                       <ScanFace className="w-3 h-3 text-brand-main" />
                       <span className="text-white font-bold text-xs">{aiConfidence}%</span>
                     </div>
-                    <div className="relative w-20 h-20 flex items-center justify-center">
+                    <div className="relative w-16 h-16 md:w-20 md:h-20 flex items-center justify-center">
                       <svg className="absolute w-full h-full -rotate-90" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="6" />
                         <Motion.circle cx="50" cy="50" r="42" fill="none" stroke="#38BDF8" strokeWidth="6" strokeDasharray="264" strokeDashoffset={264 - (264 * holdProgress) / 100} strokeLinecap="round" />
                       </svg>
-                      <div className="w-14 h-14 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/30 shadow-[0_0_20px_rgba(56,189,248,0.3)]">
-                        <span className="text-3xl font-bold text-white drop-shadow-sm">{detectedLetter}</span>
+                      <div className="w-10 h-10 md:w-14 md:h-14 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/30 shadow-[0_0_20px_rgba(56,189,248,0.3)]">
+                        <span className="text-2xl md:text-3xl font-bold text-white drop-shadow-sm">{detectedLetter}</span>
                       </div>
                     </div>
                     <p className="text-white/60 text-[10px] mt-1 font-medium tracking-wide">Tahan posisi...</p>
@@ -652,22 +677,26 @@ const Terjemah = () => {
       </Motion.div>
 
       {/* right: translation */}
-      <Motion.div layout className="flex-1 w-full max-w-[500px] h-[450px] flex flex-col relative">
+      <Motion.div className="flex-1 w-full md:max-w-[500px] min-h-[400px] md:h-[450px] flex flex-col relative mt-8 md:mt-0">
         {/* UPDATE STYLE HEADER */}
           {/* HEADER AREA */}
-          <div className="relative w-fit">
+          {/* UPDATE STYLE HEADER: Flexbox for safety (No Overlap) */}
+          {/* UPDATE STYLE HEADER: Flexbox for safety (No Overlap) */}
+          <div className="w-full flex items-end justify-between pl-0 pr-4 mb-[-4px] relative z-20">
             {/* TITLE TAB */}
-            <div className={`w-fit px-12 py-3 rounded-t-[1.5rem] relative top-[4px] z-0 shadow-sm transition-colors duration-300 ${isDarkMode ? 'bg-slate-700' : 'bg-brand-main'}`}>
-              <h2 className="text-white font-bold text-lg tracking-wider">Terjemah</h2>
+            {/* Fix: Precise alignment with 4px border (mb-[-4px] on parent, no extra top offset) */}
+            <div className={`px-10 py-3 rounded-t-[1.5rem] shadow-sm relative transition-colors duration-300 ${isDarkMode ? 'bg-slate-700' : 'bg-brand-main'}`}>
+              <h2 className="text-white font-extrabold text-lg md:text-xl tracking-wide">Terjemah</h2>
             </div>
             
-            {/* STYLED LANGUAGE TOGGLE */}
-            <div className="absolute left-[calc(100%+8px)] bottom-[6px] flex items-center gap-3 z-10 select-none">
-              <span className={`text-sm font-bold transition-colors ${language === 'id' ? (isDarkMode ? 'text-white' : 'text-brand-main') : 'text-slate-400'}`}>ID</span>
+            {/* STYLED LANGUAGE TOGGLE (Relative, side-by-side) */}
+            <div className="flex items-center gap-3 mb-2 select-none">
+              <span className={`text-xs md:text-sm font-bold transition-colors ${language === 'id' ? (isDarkMode ? 'text-white' : 'text-brand-main') : 'text-slate-400'}`}>ID</span>
               
+              {/* Fix: Smaller button and thumb on mobile for better fit */}
               <button 
                 onClick={() => setLanguage(prev => prev === 'id' ? 'en' : 'id')}
-                className={`w-16 h-8 rounded-full shadow-inner relative cursor-pointer overflow-hidden border-2 group hover:scale-105 transition-transform ${isDarkMode ? 'border-slate-700' : 'border-brand-main'}`}
+                className={`w-12 h-6 md:w-16 md:h-8 rounded-full shadow-inner relative cursor-pointer overflow-hidden border-2 group hover:scale-105 transition-transform ${isDarkMode ? 'border-slate-700' : 'border-brand-main'}`}
                 title={language === 'id' ? "Bahasa Indonesia" : "English"}
               >
                 {/* Dynamic Background (Flag) */}
@@ -690,17 +719,17 @@ const Terjemah = () => {
                   className="absolute inset-0 w-full h-full"
                 />
 
-                {/* Sliding Thumb */}
+                {/* Sliding Thumb - Fix: Smaller (w-4 h-4) and centered (top-[1px]) */}
                 <Motion.div 
                   layout
                   initial={false}
-                  animate={{ x: language === 'id' ? 3 : 30 }}
+                  animate={{ x: language === 'id' ? 2 : (window.innerWidth < 768 ? 24 : 34) }}
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  className="w-6 h-6 bg-brand-dark hover:bg-brand-main transition-colors rounded-full shadow-md absolute top-[2px] z-10"
+                  className="w-4 h-4 md:w-6 md:h-6 bg-brand-dark hover:bg-brand-main transition-colors rounded-full shadow-md absolute top-[1px] md:top-[2px] z-10"
                 />
               </button>
-
-              <span className={`text-sm font-bold transition-colors ${language === 'en' ? (isDarkMode ? 'text-white' : 'text-brand-main') : 'text-slate-400'}`}>EN</span>
+              
+              <span className={`text-xs md:text-sm font-bold transition-colors ${language === 'en' ? (isDarkMode ? 'text-white' : 'text-brand-main') : 'text-slate-400'}`}>EN</span>
             </div>
           </div>
         
@@ -768,10 +797,13 @@ const Terjemah = () => {
           </div>
 
           <div className="px-8 pb-4 text-center"><p className={`text-xs italic ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>*Pastikan pencahayaan cukup terang</p></div>
-          <div className={`h-20 border-t flex items-center justify-center gap-4 px-6 rounded-b-[2rem] transition-colors duration-300 ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-100'}`}>
-            <button onClick={handleReset} className={`p-3 rounded-xl border shadow-sm active:scale-95 transition-all ${isDarkMode ? 'bg-slate-800 text-red-400 border-slate-700 hover:bg-slate-700' : 'bg-white text-red-500 border-slate-200 hover:bg-red-50'}`}><RefreshCcw className="w-6 h-6" /></button>
-            <button onClick={handleSpace} className={`flex-1 py-3 rounded-xl border shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 font-bold ${isDarkMode ? 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700' : 'bg-white text-brand-dark border-slate-200 hover:bg-brand-light'}`}><RectangleHorizontal className="w-8 h-8" /> <span>SPASI / NEXT</span></button>
-            <button onClick={handleBackspace} className={`p-3 rounded-xl border shadow-sm active:scale-95 transition-all ${isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700' : 'bg-white text-gray-600 border-slate-200 hover:bg-gray-100'}`}><Delete className="w-6 h-6" /></button>
+          <div className={`h-20 border-t flex items-center justify-center gap-3 px-4 md:px-6 rounded-b-[2rem] transition-colors duration-300 ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-100'}`}>
+            <button onClick={handleReset} className={`p-3 rounded-xl border shadow-sm active:scale-95 transition-all ${isDarkMode ? 'bg-slate-800 text-red-400 border-slate-700 hover:bg-slate-700' : 'bg-white text-red-500 border-slate-200 hover:bg-red-50'}`}><RefreshCcw className="w-5 h-5 md:w-6 md:h-6" /></button>
+            <button onClick={handleSpace} className={`flex-1 py-3 rounded-xl border shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 font-bold ${isDarkMode ? 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700' : 'bg-white text-brand-dark border-slate-200 hover:bg-brand-light'}`}>
+              <RectangleHorizontal className="w-6 h-6 md:w-8 md:h-8" /> 
+              <span className="text-sm md:text-base">SPASI</span>
+            </button>
+            <button onClick={handleBackspace} className={`p-3 rounded-xl border shadow-sm active:scale-95 transition-all ${isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700' : 'bg-white text-gray-600 border-slate-200 hover:bg-gray-100'}`}><Delete className="w-5 h-5 md:w-6 md:h-6" /></button>
           </div>
         </div>
       </Motion.div>

@@ -1,33 +1,17 @@
-import { motion as Motion } from 'framer-motion';
-
 const Preloader = () => {
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#E0F2FE] flex items-center justify-center">
+    <div className="fixed inset-0 z-[9999] bg-[#E0F2FE] flex items-center justify-center animate-fade-in">
       <div className="relative flex flex-col items-center">
         
-        <Motion.div
-          initial={{ scale: 0.8, opacity: 0.5 }}
-          animate={{ scale: 1.1, opacity: 1 }}
-          transition={{ 
-            repeat: Infinity, 
-            repeatType: "reverse", 
-            duration: 0.8 
-          }}
-          className="mb-4"
+        <div
+          className="mb-4 animate-pulse"
         >
           <img src="/logo.png" alt="Loading..." className="h-24 w-auto object-contain drop-shadow-xl" />
-        </Motion.div>
+        </div>
 
         <div className="w-48 h-1.5 bg-brand-main/20 rounded-full overflow-hidden relative">
-          <Motion.div 
-            initial={{ x: '-100%' }}
-            animate={{ x: '100%' }}
-            transition={{ 
-              repeat: Infinity, 
-              duration: 1.5, 
-              ease: "easeInOut" 
-            }}
-            className="absolute inset-0 bg-brand-main rounded-full"
+          <div 
+            className="absolute inset-0 bg-brand-main rounded-full animate-[shimmer_1.5s_infinite]"
           />
         </div>
 

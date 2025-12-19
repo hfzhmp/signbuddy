@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AnimatePresence, motion as Motion } from 'framer-motion';
+
 
 // Components
 import Layout from './components/Layout';
@@ -26,54 +26,45 @@ function App() {
 
   return (
     <Router>
-      <AnimatePresence mode="wait">
-        {isInitialLoading ? (
-          <Motion.div 
-            key="preloader" 
-            exit={{ opacity: 0 }} 
-            transition={{ duration: 0.5 }}
-          >
-            <Preloader />
-          </Motion.div>
-        ) : (
-          <Motion.div 
-            key="content" 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }}
-          >
-            <Suspense fallback={<LoadingScreen />}>
-              <Routes>
-                <Route 
-                  path="/" 
-                  element={
-                    <Layout>
-                      <Home />
-                    </Layout>
-                  } 
-                />
-                <Route 
-                  path="/terjemah" 
-                  element={
-                    <Layout>
-                      <Terjemah />
-                    </Layout>
-                  } 
-                />
-                <Route 
-                  path="/kamus" 
-                  element={
-                    <Layout>
-                      <Kamus />
-                    </Layout>
-                  } 
-                />
 
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </Motion.div>
-        )}
-      </AnimatePresence>
+
+
+      {/* Overlay Preloader (Fixed on top) */}
+      {isInitialLoading && <Preloader />}
+
+      {/* Main Content (Always Mounted underneath) */}
+      <div className="relative z-0">
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            <Route 
+              path="/" 
+              element={
+                <Layout>
+                  <Home />
+                </Layout>
+              } 
+            />
+            <Route 
+              path="/terjemah" 
+              element={
+                <Layout>
+                  <Terjemah />
+                </Layout>
+              } 
+            />
+            <Route 
+              path="/kamus" 
+              element={
+                <Layout>
+                  <Kamus />
+                </Layout>
+              } 
+            />
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </div>
     </Router>
   );
 }

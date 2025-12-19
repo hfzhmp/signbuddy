@@ -35,7 +35,7 @@ const Navbar = () => {
 
   return (
     // Container: Fixed, Full Width, tapi pointer-events-none biar tembus pandang
-    <nav className="fixed top-6 left-0 right-0 z-50 flex justify-center pointer-events-none h-14">
+    <nav className="fixed top-6 left-0 right-0 z-50 justify-center pointer-events-none h-14 hidden md:flex">
       
       {/* MENU TENGAH (Pointer events auto biar bisa diklik) */}
       <div className={`

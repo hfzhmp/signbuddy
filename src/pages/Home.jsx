@@ -20,7 +20,7 @@ const Home = () => {
   return (
     <div className="w-full pb-12">
       {/* HERO */}
-      <div className="flex flex-col md:flex-row items-center justify-between min-h-[70vh] gap-8 mb-12 relative overflow-hidden">
+      <div className="flex flex-col md:flex-row items-center justify-between min-h-[70vh] gap-8 mb-12 relative p-4 md:p-0">
 
         <Motion.div 
           initial={{ opacity: 0, x: -50 }}
@@ -40,24 +40,24 @@ const Home = () => {
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="flex-1 space-y-2 text-left max-w-lg"
+          className="flex-1 space-y-4 text-center md:text-left max-w-lg mx-auto md:mx-0 flex flex-col items-center md:items-start"
         >
           <div className="flex items-center gap-4 mb-2">
             <img 
               src="/logo.png" 
               alt="SignBuddy Logo" 
-              className={`w-auto h-25 object-contain drop-shadow-md hover:scale-105 transition-transform duration-500 ${isDarkMode ? 'brightness-0 invert' : ''}`} 
+              className={`w-auto h-20 md:h-25 object-contain drop-shadow-md hover:scale-105 transition-transform duration-500 ${isDarkMode ? 'brightness-0 invert' : ''}`} 
             />
           </div>
           
-          <p className={`text-lg leading-relaxed font-medium transition-colors ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+          <p className={`text-base md:text-lg leading-relaxed font-medium transition-colors px-4 md:px-0 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
             Penerjemah Bahasa Isyarat Dasar Berbasis Web Menggunakan 
             <span className="text-brand-dark font-semibold"> Deep Learning AI</span> dan 
             <span className="text-brand-dark font-semibold"> Deterministic Finite Automata</span>.
           </p>
           
-          <Link to="/terjemah">
-              <button className="mt-4 px-10 py-3 bg-gradient-to-r from-brand-main to-[#2dd4bf] text-white text-xl font-bold rounded-full shadow-glow hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2 group">
+          <Link to="/terjemah" className="w-full md:w-auto flex justify-center md:justify-start">
+              <button className="mt-4 px-8 py-2.5 md:px-10 md:py-3 bg-gradient-to-r from-brand-main to-[#2dd4bf] text-white text-lg md:text-xl font-bold rounded-full shadow-glow hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2 group mx-auto md:mx-0">
                 Mulai Sekarang
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
