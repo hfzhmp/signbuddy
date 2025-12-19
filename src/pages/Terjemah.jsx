@@ -316,7 +316,7 @@ const Terjemah = () => {
         if (!handsInstance) {
           handsInstance = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
           handsInstance.setOptions({ 
-              maxNumHands: 2, 
+              maxNumHands: 1, 
               modelComplexity: 0, 
               minDetectionConfidence: 0.5, 
               minTrackingConfidence: 0.5 
