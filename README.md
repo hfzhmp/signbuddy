@@ -1,6 +1,6 @@
 # SignBuddy
 
-SignBuddy is an interactive web application designed to help users learn and translate sign language (BISINDO) using real-time hand gesture recognition. Built with modern web technologies and machine learning, SignBuddy aims to bridge the communication gap by making sign language learning accessible and engaging.
+SignBuddy is an interactive web application designed to help users learn and translate sign language (ASL) using real-time hand gesture recognition. Built with modern web technologies and machine learning, SignBuddy aims to bridge the communication gap by making sign language learning accessible and engaging.
 
 ## 🚀 Features
 
@@ -44,7 +44,3 @@ SignBuddy is an interactive web application designed to help users learn and tra
 - Navigate to the **Home** page to learn about the project.
 - Visit **Terjemah** to use the camera for real-time sign language translation. Ensure you grant camera permissions.
 - Explore **Kamus** to browse the sign language dictionary.
-
-## 📄 License
-
-[MIT](LICENSE)
