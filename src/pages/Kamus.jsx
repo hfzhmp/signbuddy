@@ -79,7 +79,7 @@ const Kamus = () => {
       <AnimatePresence>
         {selectedItem && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
+            <Motion.div 
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }} 

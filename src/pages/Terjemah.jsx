@@ -26,8 +26,10 @@ const Terjemah = () => {
 
   // UI state
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [isModelLoading, setIsModelLoading] = useState(false);
-  
+  const [isModelLoading, setIsModelLoading] = useState(false); // Used for "System Initializing" phase
+  const [isWebcamReady, setIsWebcamReady] = useState(false); // New: Track actual webcam stream
+  const [isSystemReady, setIsSystemReady] = useState(false); // New: True when Camera + AI are both ready
+
   const [finalSentence, setFinalSentence] = useState(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
@@ -37,10 +39,10 @@ const Terjemah = () => {
 
   // -- Language State --
   const [language, setLanguage] = useState(() => {
-     try {
-       const saved = sessionStorage.getItem(STORAGE_KEY);
-       return saved ? (JSON.parse(saved).language || 'id') : 'id';
-     } catch { return 'id'; }
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      return saved ? (JSON.parse(saved).language || 'id') : 'id';
+    } catch { return 'id'; }
   });
   
   const [currentWord, setCurrentWord] = useState(() => {
@@ -284,45 +286,82 @@ const Terjemah = () => {
 
   // --- START SYSTEM ---
   const handleStartSystem = async () => {
-    setIsModelLoading(true);
-
-    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 2000));
-    const loadAiPromise = (async () => {
-      if (!model) {
-        try {
-          const loadedModel = await tf.loadLayersModel('/model/model.json');
-          if(isMounted.current) setModel(loadedModel);
-          tf.tidy(() => { loadedModel.predict(tf.zeros([1, 63])); });
-        } catch (err) {
-          console.error("Failed to load model:", err);
-          throw err;
-        }
-      }
-      let handsInstance = handsRef.current;
-      if (!handsInstance) {
-        handsInstance = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
-        handsInstance.setOptions({ maxNumHands: 2, modelComplexity: 0, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
-        handsInstance.onResults(onResults);
-        handsRef.current = handsInstance;
-      }
-    })();
+    setIsCameraActive(true); // Mount Webcam immediately (hidden)
+    setIsModelLoading(true); // Show Loading State
+    setIsWebcamReady(false);
+    setIsSystemReady(false);
 
     try {
-      await Promise.all([minDelayPromise, loadAiPromise]);
-      
+      // 1. Explicit Backend Init
+      if (!tf.getBackend()) {
+          await tf.setBackend('webgl');
+          await tf.ready();
+      }
+
+      // 2. Load AI (Parallel with Webcam mounting)
+      const loadAiPromise = (async () => {
+        if (!model) {
+          try {
+            const loadedModel = await tf.loadLayersModel('/model/model.json');
+            if(isMounted.current) setModel(loadedModel);
+            // Warmup
+            tf.tidy(() => { loadedModel.predict(tf.zeros([1, 63])); });
+          } catch (err) {
+            console.error("Failed to load model:", err);
+            throw err;
+          }
+        }
+        
+        let handsInstance = handsRef.current;
+        if (!handsInstance) {
+          handsInstance = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+          handsInstance.setOptions({ 
+              maxNumHands: 2, 
+              modelComplexity: 0, 
+              minDetectionConfidence: 0.5, 
+              minTrackingConfidence: 0.5 
+          });
+          handsInstance.onResults(onResults);
+          handsRef.current = handsInstance;
+        }
+      })();
+
+      await loadAiPromise;
+      // Note: We don't set setIsModelLoading(false) here yet. 
+      // We wait for checking isWebcamReady in useEffect.
+
+    } catch (error) {
       if (isMounted.current) {
         setIsModelLoading(false);
-        setIsCameraActive(true);
+        setIsCameraActive(false);
       }
-    } catch (error) {
-      if (isMounted.current) setIsModelLoading(false);
       console.error("Gagal memulai sistem:", error);
       alert("Gagal memuat sistem AI. Cek koneksi internet anda.");
     }
   };
 
+  // --- SYNCHRONIZED STARTUP EFFECT ---
+  useEffect(() => {
+    if (isCameraActive && isWebcamReady && model && handsRef.current && isModelLoading) {
+      // Both are ready (Webcam stream + AI Model). 
+      // Enforce minimum delay if needed, or just go. 
+      // User wanted "Loading appears WHEN 2 second... AND all ready".
+      // We can use a small timeout to ensure UI stability.
+      const timer = setTimeout(() => {
+        if(isMounted.current) {
+          setIsModelLoading(false);
+          setIsSystemReady(true);
+        }
+      }, 500); // 500ms safety buffer after both are ready
+      return () => clearTimeout(timer);
+    }
+  }, [isCameraActive, isWebcamReady, model, isModelLoading]);
+
   const handleStopSystem = () => {
     setIsCameraActive(false);
+    setIsSystemReady(false);
+    setIsWebcamReady(false);
+    
     setDetectedLetter(null);
     setHoldProgress(0);
     detectionStartTime.current = 0;
@@ -335,18 +374,24 @@ const Terjemah = () => {
       if (!isMounted.current) return;
 
       const THROTTLE_MS = 50; 
-      if (isCameraActive && webcamRef.current && webcamRef.current.video.readyState === 4 && handsRef.current) {
+      // Only detect if System is officially Ready
+      if (isSystemReady && webcamRef.current && webcamRef.current.video && webcamRef.current.video.readyState === 4 && handsRef.current) {
         if (timestamp - lastProcessedTime.current >= THROTTLE_MS) {
           lastProcessedTime.current = timestamp;
-          await handsRef.current.send({ image: webcamRef.current.video });
+          try {
+            await handsRef.current.send({ image: webcamRef.current.video });
+          } catch(err) {
+            console.warn("Detection dropped frame:", err);
+            // Don't crash, just skip frame
+          }
         }
       }
       animationId = requestAnimationFrame(detect);
     };
 
-    if (isCameraActive) animationId = requestAnimationFrame(detect);
+    if (isSystemReady) animationId = requestAnimationFrame(detect);
     return () => cancelAnimationFrame(animationId);
-  }, [isCameraActive]);
+  }, [isSystemReady]);
 
   // --- DICTIONARY LOADING ---
   useEffect(() => {
@@ -362,12 +407,12 @@ const Terjemah = () => {
 
         if (language === 'id') {
            // kamus-id.json is Array of Uppercase Strings
-           wordSet = new Set(data);
+          wordSet = new Set(data);
         } else {
-           // kamus-en.json is Object { "word": 1 }
-           // keys are likely lowercase, convert to UPPERCASE to match LABELS input
-           const keys = Object.keys(data).map(w => w.toUpperCase());
-           wordSet = new Set(keys);
+          // kamus-en.json is Object { "word": 1 }
+          // keys are likely lowercase, convert to UPPERCASE to match LABELS input
+          const keys = Object.keys(data).map(w => w.toUpperCase());
+          wordSet = new Set(keys);
         }
 
         if(isMounted.current) {
@@ -470,33 +515,55 @@ const Terjemah = () => {
       <Motion.div layout className={`flex-1 w-full max-w-[600px] aspect-[4/3] rounded-[2.5rem] p-3 shadow-xl border-[4px] relative overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-brand-main'}`}>
         <div className="w-full h-full bg-gray-900 rounded-[2rem] relative overflow-hidden flex flex-col items-center justify-center group">
           <div className="absolute inset-0 w-full h-full bg-black z-0">
+            {/* 
+              LOGIC: 
+              - Webcam is mounted if isCameraActive is TRUE.
+              - It is hidden/behind loader until system is ready, but it MUST be mounted to init stream.
+            */}
             {isCameraActive ? (
               <>
-                <Webcam ref={webcamRef} audio={false} screenshotFormat="image/jpeg" videoConstraints={VIDEO_CONSTRAINTS} className="absolute inset-0 w-full h-full object-cover" style={{ transform: "scaleX(-1)" }} />
+                <Webcam 
+                  ref={webcamRef} 
+                  audio={false} 
+                  screenshotFormat="image/jpeg" 
+                  videoConstraints={VIDEO_CONSTRAINTS} 
+                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isSystemReady ? 'opacity-100' : 'opacity-0'}`} 
+                  style={{ transform: "scaleX(-1)" }} 
+                  onUserMedia={() => setIsWebcamReady(true)}
+                  onUserMediaError={(err) => {
+                    console.error("Webcam Error:", err);
+                    alert("Gagal mengakses kamera. Pastikan izin kamera diberikan.");
+                    handleStopSystem();
+                  }}
+                />
                 <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none" style={{ transform: "scaleX(-1)" }} />
               </>
-            ) : (
-              // UPDATE: Placeholder Camera Dark Mode friendly
-              <div className="w-full h-full bg-slate-800 flex flex-col items-center justify-center gap-4">
-                {isModelLoading ? (
+            ) : null}
+
+            {/* LOADING / PLACEHOLDER STATE */}
+            {(!isCameraActive || (isCameraActive && !isSystemReady)) && (
+              <div className="absolute inset-0 w-full h-full bg-slate-800 flex flex-col items-center justify-center gap-4 z-20">
+                {isCameraActive ? (
+                  // LOADING STATE (Webcam exists but not ready OR Model loading)
                   <>
                     <div className="relative">
                       <div className="absolute inset-0 bg-brand-main/20 blur-xl rounded-full"></div>
                       <Loader2 className="w-16 h-16 text-brand-main animate-spin relative z-10" />
                     </div>
                     <div className="text-center">
-                      <h3 className="text-white font-bold text-lg">Menyiapkan AI...</h3>
-                      <p className="text-white/40 text-sm">Memuat Model & Vision Engine</p>
+                      <h3 className="text-white font-bold text-lg">Menyiapkan Sistem...</h3>
+                      <p className="text-white/40 text-sm">Menghubungkan Kamera & AI</p>
                     </div>
                   </>
                 ) : (
+                  // IDLE STATE
                   <div className="text-white/20 font-bold text-2xl">Camera Off</div>
                 )}
               </div>
             )}
           </div>
 
-          {isCameraActive && (
+          {isSystemReady && (
             <>
               <AnimatePresence>
                 {activeGuide && (
@@ -573,7 +640,7 @@ const Terjemah = () => {
           )}
 
           <AnimatePresence>
-            {!isCameraActive && !isModelLoading && (
+            {!isCameraActive && (
               <Motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute bottom-6 flex justify-center w-full z-20">
                 <button onClick={handleStartSystem} className="bg-brand-main p-4 rounded-full hover:scale-110 transition-all shadow-glow border-4 border-white/20">
                   <IconCamera className="w-8 h-8 text-white" />
