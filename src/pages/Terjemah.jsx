@@ -552,7 +552,7 @@ const Terjemah = () => {
                     </div>
                     <div className="text-center">
                       <h3 className="text-white font-bold text-lg">Menyiapkan Sistem...</h3>
-                      <p className="text-white/40 text-sm">Menghubungkan Kamera & AI</p>
+                      <p className="text-white/40 text-sm">Memuat Model & Vision Engine</p>
                     </div>
                   </>
                 ) : (
