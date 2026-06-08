@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/next';
 
 
 // Components
@@ -26,9 +27,7 @@ function App() {
 
   return (
     <Router>
-
-
-
+      <Analytics />
       {/* Overlay Preloader (Fixed on top) */}
       {isInitialLoading && <Preloader />}
 
