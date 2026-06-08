@@ -21,11 +21,11 @@ const Layout = ({ children }) => {
       ref={mainContainerRef}
       // OPTIMASI 1: Kurangi durasi transisi background dari 500ms ke 300ms
       // Hapus 'transition-colors' kalau masih berat, biar warnanya ganti instan.
-      className={`
-        relative w-full h-screen scrollbar-hide transition-colors duration-300 ease-in-out pb-20 md:pb-0
-        ${isDarkMode ? 'bg-slate-900 text-slate-100' : 'bg-[#eff6ff] text-slate-800'}
-        overflow-y-auto scroll-smooth
-      `}
+        className={`
+          relative w-full h-screen scrollbar-hide transition-colors duration-300 ease-in-out pb-36 md:pb-0
+          ${isDarkMode ? 'bg-slate-900 text-slate-100' : 'bg-[#eff6ff] text-slate-800'}
+          overflow-y-auto scroll-smooth
+        `}
     >
       {/* MOBILE NAV (Bottom Fixed) */}
       <MobileNav />
